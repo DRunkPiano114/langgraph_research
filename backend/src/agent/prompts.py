@@ -50,6 +50,8 @@ Instructions:
 - Only include the information found in the search results, don't make up any information.
 - Structure event findings clearly with event details for business strategy development.
 
+- When providing event or website links, do NOT return temporary redirect links (such as vertexaisearch.cloud.google.com or grounding-api-redirect). Always return the original, official, public-facing source URL (e.g., the event’s official website, Eventbrite page, or a reputable news site).
+- When listing events, always provide the official/public URL for each event. Do NOT write "Not explicitly provided in summaries". If the source summary does not explicitly provide a link, then search the event’s official website (e.g., VisitCanberra, Eventbrite, or the venue’s homepage) and return the correct URL. Always return clickable links (starting with https://).
 Research Topic:
 {research_topic}
 """
@@ -93,6 +95,8 @@ Instructions:
 - You are the final step of a multi-step research process, don't mention that you are the final step. 
 - You have access to all the information gathered from the previous steps.
 - You have access to the user's question.
+- When providing event or website links, do NOT return temporary redirect links (such as vertexaisearch.cloud.google.com or grounding-api-redirect). Always return the original, official, public-facing source URL (e.g., the event’s official website, Eventbrite page, or a reputable news site).
+- When listing events, always provide the official/public URL for each event. Do NOT write "Not explicitly provided in summaries". If the source summary does not explicitly provide a link, then search the event’s official website (e.g., VisitCanberra, Eventbrite, or the venue’s homepage) and return the correct URL. Always return clickable links (starting with https://).
 - Generate a high-quality answer structured in two main sections:
 
 ## SECTION 1: EVENT SEARCH & CURATION

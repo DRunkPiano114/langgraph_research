@@ -39,6 +39,13 @@ class Configuration(BaseModel):
         metadata={"description": "The maximum number of research loops to perform."},
     )
 
+    afc_max_remote_calls: int = Field(
+        default=3,
+        metadata={
+            "description": "Maximum number of Auto Function Calling remote tool invocations (e.g., Google Search) per model response."
+        },
+    )
+
     @classmethod
     def from_runnable_config(
         cls, config: Optional[RunnableConfig] = None

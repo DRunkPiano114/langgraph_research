@@ -107,7 +107,7 @@ export default function App() {
 
       // construct the market research query
       const filterText = filter === "all" ? "events" : `${filter} events`;
-      const marketResearchQuery = `Find ${filterText} within ${distance}km of ${location} and develop business strategies for a ${what}. 
+      const marketResearchQuery = `Find ${filterText} within ${distance}km of ${location} and develop business strategies for the ${what}. 
 
 Search for all ${filterText} within ${distance}km of ${location}. Use data sources like Eventbrite, Google Search, local tourism sites, and other major public sources. Only include events that have not yet expired.
 

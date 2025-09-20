@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, MapPin, Ruler, Store, Filter } from "lucide-react";
+import { SquarePen, Send, StopCircle, MapPin, Ruler, Store, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,13 +28,12 @@ export const InputForm: React.FC<InputFormProps> = ({
   const [distance, setDistance] = useState("10");
   const [what, setWhat] = useState("");
   const [filter, setFilter] = useState("all");
-  const [effort, setEffort] = useState("medium");
-  const [model, setModel] = useState("gemini-2.5-flash");
+  // Effort is fixed to "low" and model to a default constant; selectors removed
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!location.trim() || !what.trim()) return;
-    onSubmit(location, distance, what, filter, effort, model);
+    onSubmit(location, distance, what, filter, "low", "gemini-2.5-flash");
     // Keep form values for potential reuse
   };
 
@@ -80,7 +79,7 @@ export const InputForm: React.FC<InputFormProps> = ({
             value={what}
             onChange={(e) => setWhat(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="e.g., restaurant, café, bookstore, hotel"
+            placeholder="e.g., chinese restaurant, café, bookstore, hotel"
             className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-500 focus:ring-neutral-500"
           />
         </div>
@@ -96,9 +95,10 @@ export const InputForm: React.FC<InputFormProps> = ({
               <SelectValue placeholder="Distance" />
             </SelectTrigger>
             <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300">
+              <SelectItem value="1">1 km</SelectItem>
+              <SelectItem value="3">3 km</SelectItem>
               <SelectItem value="5">5 km</SelectItem>
               <SelectItem value="10">10 km</SelectItem>
-              <SelectItem value="15">15 km</SelectItem>
               <SelectItem value="25">25 km</SelectItem>
               <SelectItem value="50">50 km</SelectItem>
             </SelectContent>
@@ -156,62 +156,8 @@ export const InputForm: React.FC<InputFormProps> = ({
         )}
       </div>
 
-      {/* Advanced Settings */}
-      <div className="flex items-center justify-between pt-2 border-t border-neutral-600">
-        <div className="flex flex-row gap-2">
-          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-lg pl-2">
-            <div className="flex flex-row items-center text-sm">
-              <Brain className="h-4 w-4 mr-2" />
-              Research Effort
-            </div>
-            <Select value={effort} onValueChange={setEffort}>
-              <SelectTrigger className="w-[120px] bg-transparent border-none cursor-pointer">
-                <SelectValue placeholder="Effort" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
-                <SelectItem
-                  value="low"
-                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
-                >
-                  Low
-                </SelectItem>
-                <SelectItem
-                  value="medium"
-                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
-                >
-                  Medium
-                </SelectItem>
-                <SelectItem
-                  value="high"
-                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
-                >
-                  High
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-lg pl-2">
-            <div className="flex flex-row items-center text-sm ml-2">
-              <Cpu className="h-4 w-4 mr-2" />
-              Model
-            </div>
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="w-[150px] bg-transparent border-none cursor-pointer">
-                <SelectValue placeholder="Model" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
-                <SelectItem
-                  value="gemini-2.5-flash"
-                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
-                >
-                  <div className="flex items-center">
-                    <Zap className="h-4 w-4 mr-2 text-orange-400" /> Gemini 2.5 Flash
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      {/* Advanced Settings (simplified): Only show New Research when history exists */}
+      <div className="flex items-center justify-end pt-2 border-t border-neutral-600">
         {hasHistory && (
           <Button
             className="bg-neutral-700 border-neutral-600 text-neutral-300 hover:bg-neutral-600 cursor-pointer rounded-lg"

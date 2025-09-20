@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from agent.tools_and_schemas import SearchQueryList, Reflection
 from dotenv import load_dotenv
@@ -31,7 +32,32 @@ from agent.utils import (
     resolve_urls,
 )
 
-load_dotenv()
+def _load_env_from_known_locations():
+    env_file_env = os.environ.get("ENV_FILE")
+
+    candidates = []
+    if env_file_env:
+        candidates.append(Path(env_file_env))
+
+    current_file = Path(__file__).resolve()
+    backend_dir = current_file.parents[2]
+    repo_root = current_file.parents[3] if len(current_file.parents) >= 4 else backend_dir.parent
+
+    candidates.append(backend_dir / ".env")
+    candidates.append(repo_root / ".env")
+
+    for candidate in candidates:
+        try:
+            if candidate and candidate.exists():
+                load_dotenv(dotenv_path=candidate, override=False)
+        except Exception:
+            pass
+
+    # Fallback to default discovery as a last resort
+    load_dotenv()
+
+
+_load_env_from_known_locations()
 
 if os.getenv("GEMINI_API_KEY") is None:
     raise ValueError("GEMINI_API_KEY is not set")
@@ -282,11 +308,11 @@ builder.add_conditional_edges(
     "generate_query", continue_to_web_research, ["web_research"]
 )
 # Reflect on the web research
-builder.add_edge("web_research", "reflection")
+builder.add_edge("web_research", "finalize_answer")
 # Evaluate the research
-builder.add_conditional_edges(
-    "reflection", evaluate_research, ["web_research", "finalize_answer"]
-)
+# builder.add_conditional_edges(
+#     "reflection", evaluate_research, ["web_research", "finalize_answer"]
+# )
 # Finalize the answer
 builder.add_edge("finalize_answer", END)
 
