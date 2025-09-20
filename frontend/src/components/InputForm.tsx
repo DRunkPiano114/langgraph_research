@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SquarePen, Brain, Send, StopCircle, Zap, Cpu } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { SquarePen, Brain, Send, StopCircle, Zap, Cpu, MapPin, Ruler, Store, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -10,9 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Updated InputFormProps
+// Updated InputFormProps for Market Research
 interface InputFormProps {
-  onSubmit: (inputValue: string, effort: string, model: string) => void;
+  onSubmit: (location: string, distance: string, what: string, filter: string, effort: string, model: string) => void;
   onCancel: () => void;
   isLoading: boolean;
   hasHistory: boolean;
@@ -24,18 +24,21 @@ export const InputForm: React.FC<InputFormProps> = ({
   isLoading,
   hasHistory,
 }) => {
-  const [internalInputValue, setInternalInputValue] = useState("");
+  const [location, setLocation] = useState("");
+  const [distance, setDistance] = useState("10");
+  const [what, setWhat] = useState("");
+  const [filter, setFilter] = useState("all");
   const [effort, setEffort] = useState("medium");
-  const [model, setModel] = useState("gemini-2.5-flash-preview-04-17");
+  const [model, setModel] = useState("gemini-2.5-flash");
 
   const handleInternalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!internalInputValue.trim()) return;
-    onSubmit(internalInputValue, effort, model);
-    setInternalInputValue("");
+    if (!location.trim() || !what.trim()) return;
+    onSubmit(location, distance, what, filter, effort, model);
+    // Keep form values for potential reuse
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Submit with Ctrl+Enter (Windows/Linux) or Cmd+Enter (Mac)
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -43,61 +46,123 @@ export const InputForm: React.FC<InputFormProps> = ({
     }
   };
 
-  const isSubmitDisabled = !internalInputValue.trim() || isLoading;
+  const isSubmitDisabled = !location.trim() || !what.trim() || isLoading;
 
   return (
     <form
       onSubmit={handleInternalSubmit}
-      className={`flex flex-col gap-2 p-3 pb-4`}
+      className={`flex flex-col gap-3 p-4 pb-4`}
     >
-      <div
-        className={`flex flex-row items-center justify-between text-white rounded-3xl rounded-bl-sm ${
-          hasHistory ? "rounded-br-sm" : ""
-        } break-words min-h-7 bg-neutral-700 px-4 pt-3 `}
-      >
-        <Textarea
-          value={internalInputValue}
-          onChange={(e) => setInternalInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Who won the Euro 2024 and scored the most goals?"
-          className={`w-full text-neutral-100 placeholder-neutral-500 resize-none border-0 focus:outline-none focus:ring-0 outline-none focus-visible:ring-0 shadow-none
-                        md:text-base  min-h-[56px] max-h-[200px]`}
-          rows={1}
-        />
-        <div className="-mt-3">
-          {isLoading ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 cursor-pointer rounded-full transition-all duration-200"
-              onClick={onCancel}
-            >
-              <StopCircle className="h-5 w-5" />
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              variant="ghost"
-              className={`${
-                isSubmitDisabled
-                  ? "text-neutral-500"
-                  : "text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
-              } p-2 cursor-pointer rounded-full transition-all duration-200 text-base`}
-              disabled={isSubmitDisabled}
-            >
-              Search
-              <Send className="h-5 w-5" />
-            </Button>
-          )}
+      {/* Main Input Fields */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Location Field */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-neutral-300 flex items-center">
+            <MapPin className="h-4 w-4 mr-2" />
+            Location
+          </label>
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="e.g., Sydney CBD, New York, London"
+            className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-500 focus:ring-neutral-500"
+          />
+        </div>
+
+        {/* Business Type Field */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-neutral-300 flex items-center">
+            <Store className="h-4 w-4 mr-2" />
+            Business Type
+          </label>
+          <Input
+            value={what}
+            onChange={(e) => setWhat(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="e.g., restaurant, café, bookstore, hotel"
+            className="bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-500 focus:ring-neutral-500"
+          />
+        </div>
+
+        {/* Distance Field */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-neutral-300 flex items-center">
+            <Ruler className="h-4 w-4 mr-2" />
+            Distance (km)
+          </label>
+          <Select value={distance} onValueChange={setDistance}>
+            <SelectTrigger className="bg-neutral-700 border-neutral-600 text-neutral-100">
+              <SelectValue placeholder="Distance" />
+            </SelectTrigger>
+            <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300">
+              <SelectItem value="5">5 km</SelectItem>
+              <SelectItem value="10">10 km</SelectItem>
+              <SelectItem value="15">15 km</SelectItem>
+              <SelectItem value="25">25 km</SelectItem>
+              <SelectItem value="50">50 km</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Event Filter Field */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-neutral-300 flex items-center">
+            <Filter className="h-4 w-4 mr-2" />
+            Event Type
+          </label>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="bg-neutral-700 border-neutral-600 text-neutral-100">
+              <SelectValue placeholder="Event Filter" />
+            </SelectTrigger>
+            <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300">
+              <SelectItem value="all">All Events</SelectItem>
+              <SelectItem value="music">Music & Concerts</SelectItem>
+              <SelectItem value="sports">Sports</SelectItem>
+              <SelectItem value="food">Food & Dining</SelectItem>
+              <SelectItem value="arts">Arts & Culture</SelectItem>
+              <SelectItem value="business">Business & Networking</SelectItem>
+              <SelectItem value="festivals">Festivals</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <div className="flex items-center justify-between">
+
+      {/* Submit Button */}
+      <div className="flex justify-end mt-2">
+        {isLoading ? (
+          <Button
+            type="button"
+            variant="destructive"
+            className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+            onClick={onCancel}
+          >
+            <StopCircle className="h-4 w-4 mr-2" />
+            Cancel Research
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            className={`${
+              isSubmitDisabled
+                ? "bg-neutral-600 text-neutral-400"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            } transition-all duration-200`}
+            disabled={isSubmitDisabled}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Generate Business Strategy
+          </Button>
+        )}
+      </div>
+
+      {/* Advanced Settings */}
+      <div className="flex items-center justify-between pt-2 border-t border-neutral-600">
         <div className="flex flex-row gap-2">
-          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
+          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-lg pl-2">
             <div className="flex flex-row items-center text-sm">
               <Brain className="h-4 w-4 mr-2" />
-              Effort
+              Research Effort
             </div>
             <Select value={effort} onValueChange={setEffort}>
               <SelectTrigger className="w-[120px] bg-transparent border-none cursor-pointer">
@@ -125,7 +190,7 @@ export const InputForm: React.FC<InputFormProps> = ({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-xl rounded-t-sm pl-2  max-w-[100%] sm:max-w-[90%]">
+          <div className="flex flex-row gap-2 bg-neutral-700 border-neutral-600 text-neutral-300 focus:ring-neutral-500 rounded-lg pl-2">
             <div className="flex flex-row items-center text-sm ml-2">
               <Cpu className="h-4 w-4 mr-2" />
               Model
@@ -136,27 +201,11 @@ export const InputForm: React.FC<InputFormProps> = ({
               </SelectTrigger>
               <SelectContent className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer">
                 <SelectItem
-                  value="gemini-2.0-flash"
+                  value="gemini-2.5-flash"
                   className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
                 >
                   <div className="flex items-center">
-                    <Zap className="h-4 w-4 mr-2 text-yellow-400" /> 2.0 Flash
-                  </div>
-                </SelectItem>
-                <SelectItem
-                  value="gemini-2.5-flash-preview-04-17"
-                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
-                >
-                  <div className="flex items-center">
-                    <Zap className="h-4 w-4 mr-2 text-orange-400" /> 2.5 Flash
-                  </div>
-                </SelectItem>
-                <SelectItem
-                  value="gemini-2.5-pro-preview-05-06"
-                  className="hover:bg-neutral-600 focus:bg-neutral-600 cursor-pointer"
-                >
-                  <div className="flex items-center">
-                    <Cpu className="h-4 w-4 mr-2 text-purple-400" /> 2.5 Pro
+                    <Zap className="h-4 w-4 mr-2 text-orange-400" /> Gemini 2.5 Flash
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -165,12 +214,12 @@ export const InputForm: React.FC<InputFormProps> = ({
         </div>
         {hasHistory && (
           <Button
-            className="bg-neutral-700 border-neutral-600 text-neutral-300 cursor-pointer rounded-xl rounded-t-sm pl-2 "
-            variant="default"
+            className="bg-neutral-700 border-neutral-600 text-neutral-300 hover:bg-neutral-600 cursor-pointer rounded-lg"
+            variant="outline"
             onClick={() => window.location.reload()}
           >
-            <SquarePen size={16} />
-            New Search
+            <SquarePen size={16} className="mr-2" />
+            New Research
           </Button>
         )}
       </div>

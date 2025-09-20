@@ -100,29 +100,38 @@ export default function App() {
   }, [thread.messages, thread.isLoading, processedEventsTimeline]);
 
   const handleSubmit = useCallback(
-    (submittedInputValue: string, effort: string, model: string) => {
-      if (!submittedInputValue.trim()) return;
+    (location: string, distance: string, what: string, filter: string, effort: string, model: string) => {
+      if (!location.trim() || !what.trim()) return;
       setProcessedEventsTimeline([]);
       hasFinalizeEventOccurredRef.current = false;
 
-      // convert effort to, initial_search_query_count and max_research_loops
-      // low means max 1 loop and 1 query
-      // medium means max 3 loops and 3 queries
-      // high means max 10 loops and 5 queries
+      // construct the market research query
+      const filterText = filter === "all" ? "events" : `${filter} events`;
+      const marketResearchQuery = `Find ${filterText} within ${distance}km of ${location} and develop business strategies for a ${what}. 
+
+Search for all ${filterText} within ${distance}km of ${location}. Use data sources like Eventbrite, Google Search, local tourism sites, and other major public sources. Only include events that have not yet expired.
+
+For each event found, create specific, actionable business strategies that directly connect to the event's characteristics and target a ${what} business type.
+
+Provide:
+1. Event list with Name, Time, Location, and Link
+2. Corresponding business strategies for each event`;
+
+      // convert effort to initial_search_query_count and max_research_loops  
       let initial_search_query_count = 0;
       let max_research_loops = 0;
       switch (effort) {
         case "low":
-          initial_search_query_count = 1;
+          initial_search_query_count = 2;
           max_research_loops = 1;
           break;
         case "medium":
-          initial_search_query_count = 3;
-          max_research_loops = 3;
+          initial_search_query_count = 4;
+          max_research_loops = 2;
           break;
         case "high":
-          initial_search_query_count = 5;
-          max_research_loops = 10;
+          initial_search_query_count = 6;
+          max_research_loops = 3;
           break;
       }
 
@@ -130,7 +139,7 @@ export default function App() {
         ...(thread.messages || []),
         {
           type: "human",
-          content: submittedInputValue,
+          content: marketResearchQuery,
           id: Date.now().toString(),
         },
       ];
