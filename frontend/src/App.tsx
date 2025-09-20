@@ -122,8 +122,8 @@ Provide:
       let max_research_loops = 0;
       switch (effort) {
         case "low":
-          initial_search_query_count = 2;
-          max_research_loops = 1;
+          initial_search_query_count = 1;
+          max_research_loops = 0;
           break;
         case "medium":
           initial_search_query_count = 4;
