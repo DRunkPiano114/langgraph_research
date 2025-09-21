@@ -4,10 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Copy, CopyCheck } from "lucide-react";
 import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
-import { useState, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { EventExplorer } from "@/components/EventExplorer";
+import type { EventsPayload, EventItem } from "@/types/events";
 import {
   ActivityTimeline,
   ProcessedEvent,
@@ -149,10 +151,16 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
     <div
       className={`text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg`}
     >
+      {/* Render only the markdown portion before the appended JSON block */}
       <ReactMarkdown components={mdComponents}>
-        {typeof message.content === "string"
-          ? message.content
-          : JSON.stringify(message.content)}
+        {(() => {
+          const content =
+            typeof message.content === "string"
+              ? message.content
+              : JSON.stringify(message.content);
+          const fenceIndex = content.indexOf("```json");
+          return fenceIndex >= 0 ? content.slice(0, fenceIndex) : content;
+        })()}
       </ReactMarkdown>
     </div>
   );
@@ -242,6 +250,8 @@ export function ChatMessagesView({
   historicalActivities,
 }: ChatMessagesViewProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [eventsPayload, setEventsPayload] = useState<EventsPayload | null>(null);
+  const [searchCenterText, setSearchCenterText] = useState<string | undefined>(undefined);
 
   const handleCopy = async (text: string, messageId: string) => {
     try {
@@ -252,6 +262,152 @@ export function ChatMessagesView({
       console.error("Failed to copy text: ", err);
     }
   };
+  // Parse the latest AI message content to extract the appended events JSON block
+  const lastAiMessage = messages.filter((m) => m.type === "ai").slice(-1)[0];
+  useEffect(() => {
+    if (!lastAiMessage) return;
+    const content =
+      typeof lastAiMessage.content === "string"
+        ? lastAiMessage.content
+        : JSON.stringify(lastAiMessage.content);
+    // 1) Try JSON block
+    try {
+      const fenceRegex = /```json\s*([\s\S]*?)```/i;
+      const match = content.match(fenceRegex);
+      if (match && match[1]) {
+        const parsed = JSON.parse(match[1]);
+        if (parsed && parsed.events && Array.isArray(parsed.events)) {
+          setEventsPayload(parsed as EventsPayload);
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 2) Call backend extractor (LLM) to structure events
+    (async () => {
+      try {
+        const resp = await fetch("/extract-events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: content }),
+        });
+        if (resp.ok) {
+          const data = (await resp.json()) as EventsPayload;
+          if (data?.events?.length) {
+            setEventsPayload(data);
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // 3) Fallback local parser
+      const parsed = parseEventsFromMarkdown(content);
+      if (parsed.events.length > 0) {
+        setEventsPayload(parsed);
+      }
+    })();
+  }, [lastAiMessage]);
+
+  function parseEventsFromMarkdown(md: string): EventsPayload {
+    // Streaming parser tailored to your screenshots
+    const text = md.replace(/\r\n?/g, "\n");
+    const lines = text.split("\n");
+    const events: EventItem[] = [];
+
+    const firstUrl = (s: string): string | null => {
+      const m1 = s.match(/\((https?:\/\/[^\s)]+)\)/); // markdown link
+      if (m1) return m1[1];
+      const m2 = s.match(/(https?:\/\/[^\s)]+)(?:\s|$)/); // plain url
+      if (m2) return m2[1];
+      return null;
+    };
+
+    let current: Partial<EventItem> | null = null;
+    const pushIfValid = () => {
+      if (current && current.name && current.locationText) {
+        events.push({
+          name: current.name!,
+          timeText: current.timeText || "",
+          startTime: null,
+          endTime: null,
+          locationText: current.locationText!,
+          address: current.address || current.locationText!,
+          link: current.link || "",
+          source: current.source || "",
+        });
+      }
+      current = null;
+    };
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      // Numbered heading like "1. A Sunday Organ Recital"
+      const heading = line.match(/^\d+\.\s+(.+)/);
+      if (heading) {
+        pushIfValid();
+        current = { name: heading[1].trim() };
+        continue;
+      }
+      if (!current) continue;
+
+      const timeLine = line.match(/^(?:[-*]\s*)?(?:\*\*)?Time(?::)?(?:\*\*)?\s*:?\s*(.+)$/i);
+      if (timeLine) {
+        current.timeText = timeLine[1].trim();
+        continue;
+      }
+
+      const locLine = line.match(/^(?:[-*]\s*)?(?:\*\*)?Location(?::)?(?:\*\*)?\s*:?\s*(.+)$/i);
+      if (locLine) {
+        let loc = locLine[1];
+        loc = loc
+          .replace(/\s*\[[^\]]*\]\([^\)]*\)/g, "") // strip markdown links/badges
+          .replace(/\s*,\s*(eventbrite|allevents|thefold|visitcanberra|visitgriffith|region|obdm|ticketek)\b/gi, "")
+          .replace(/\s*\([^\)]*approx\.[^\)]*\)/gi, "")
+          .trim();
+        current.locationText = loc;
+        current.address = loc;
+        continue;
+      }
+
+      const linkLine = line.match(/^(?:[-*]\s*)?(?:\*\*)?Link(?::)?(?:\*\*)?\s*:?\s*(.+)$/i);
+      if (linkLine) {
+        const url = firstUrl(linkLine[1]);
+        if (url) {
+          current.link = url;
+          try {
+            current.source = new URL(url).hostname.replace(/^www\./, "");
+          } catch {}
+        }
+        continue;
+      }
+
+      // Fallback: any URL line
+      if (!current.link) {
+        const url = firstUrl(line);
+        if (url) {
+          current.link = url;
+          try {
+            current.source = new URL(url).hostname.replace(/^www\./, "");
+          } catch {}
+        }
+      }
+    }
+    pushIfValid();
+
+    return { events };
+  }
+
+  // Derive search center text from the last human message input area (first line before two newlines)
+  useEffect(() => {
+    const lastHuman = messages.filter((m) => m.type === "human").slice(-1)[0];
+    if (!lastHuman) return;
+    const text = typeof lastHuman.content === "string" ? lastHuman.content : JSON.stringify(lastHuman.content);
+    // The `App.tsx` constructs a phrase like: Find <filter> within <distance>km of <location> and develop...
+    const m = text.match(/within\s+\d+\s*km\s+of\s+(.+?)(?:\s+and\s+develop|[\.!\n]|$)/i);
+    if (m && m[1]) {
+      setSearchCenterText(m[1].trim());
+    }
+  }, [messages]);
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
@@ -286,6 +442,12 @@ export function ChatMessagesView({
               </div>
             );
           })}
+          {/* Render map even if parsing returns no events; center on query location if available */}
+          {(((eventsPayload?.events?.length ?? 0) > 0) || !!searchCenterText) && (
+            <div className="mt-4">
+              <EventExplorer events={eventsPayload?.events ?? []} centerLocationText={searchCenterText} />
+            </div>
+          )}
           {isLoading &&
             (messages.length === 0 ||
               messages[messages.length - 1].type === "human") && (

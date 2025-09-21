@@ -121,6 +121,36 @@ Examples:
 
 - Include the sources you used from the Summaries in the answer correctly, use markdown format (e.g. [source](https://example.com)). THIS IS A MUST.
 
+AFTER the two sections above, append a fenced JSON block (```json ... ```) with a single top-level key "events" that contains an array of objects describing ONLY the non-expired events you listed in SECTION 1. This JSON will be consumed by a UI and MUST be strictly valid JSON (no comments, no trailing commas). Use this exact schema and key names for each event object:
+{
+  "name": string,                    // Event name
+  "timeText": string,                // Human-readable time text as shown in SECTION 1
+  "startTime": string|null,          // ISO8601 start time if determinable, else null
+  "endTime": string|null,            // ISO8601 end time if determinable, else null
+  "locationText": string,            // Venue or neighborhood as shown in SECTION 1
+  "address": string,                 // Full address if available, else repeat locationText
+  "link": string,                    // Official event URL (https)
+  "source": string                   // Source domain, e.g., "Eventbrite"
+}
+
+Example JSON block to append (keep exactly this structure with your actual events):
+```json
+{
+  "events": [
+    {
+      "name": "Sample Event",
+      "timeText": "2025-10-12 17:00–22:00",
+      "startTime": "2025-10-12T17:00:00+10:00",
+      "endTime": "2025-10-12T22:00:00+10:00",
+      "locationText": "Hyde Park, Sydney NSW",
+      "address": "Hyde Park, Elizabeth St, Sydney NSW 2000",
+      "link": "https://www.eventbrite.com/...",
+      "source": "Eventbrite"
+    }
+  ]
+}
+```
+
 User Context:
 - {research_topic}
 
